@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pateshwar Yuva Seva Samiti</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Devanagari:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <!-- Firebase SDKs (v9 compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <style>
+        :root {
+            --red:#9b1515; --red-deep:#6e0e0e;
+            --gold:#c9a227; --gold-light:#f0d080; --gold-pale:#fdf3d0;
+            --cream:#fefcf5; --ink:#1a1008; --muted:#7a6a55;
+        }
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{font-family:'Noto Serif Devanagari',serif;background:#1c1410;min-height:100vh;padding:16px;color:var(--ink);}
+
+        /* ── SETUP BANNER ── */
+        #setupBanner{background:linear-gradient(135deg,#1a3a6e,#0d2247);color:#fff;padding:14px 20px;border-radius:12px;margin-bottom:18px;font-size:13px;line-height:1.7;border-left:4px solid #74c0fc;max-width:1140px;margin-left:auto;margin-right:auto;}
+        #setupBanner strong{color:#74c0fc;font-size:14px;}
+        #setupBanner code{background:rgba(255,255,255,.15);padding:2px 7px;border-radius:4px;font-family:monospace;font-size:12px;}
+        #setupBanner .dismiss{float:right;background:none;border:1px solid rgba(255,255,255,.4);color:#fff;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:12px;margin-top:2px;}
+
+        /* ── CONFIG FORM ── */
+        #configPanel{background:#fffdf7;border-radius:14px;border-top:6px solid #0a4a8a;padding:22px 24px;max-width:1140px;margin:0 auto 20px;box-shadow:0 8px 30px rgba(0,0,0,.3);}
+        #configPanel h3{color:#0a4a8a;font-size:16px;margin-bottom:14px;}
+        .cfg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:14px;}
+        .cfg-grid input{padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:monospace;outline:none;width:100%;}
+        .cfg-grid input:focus{border-color:#0a4a8a;}
+        .cfg-grid input::placeholder{font-family:sans-serif;color:#aaa;}
+        .cfg-save{background:#0a4a8a;color:#fff;border:none;padding:10px 28px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;}
+        .cfg-note{font-size:12px;color:var(--muted);margin-top:8px;}
+
+        /* ── LAYOUT ── */
+        .app{display:flex;flex-direction:column;gap:20px;max-width:1140px;margin:0 auto;align-items:center;}
+        @media(min-width:960px){.app{flex-direction:row;align-items:flex-start;justify-content:center;}}
+
+        /* ── PANEL ── */
+        .panel{width:100%;max-width:370px;background:#fffdf7;border-radius:14px;border-top:6px solid var(--red);padding:22px 20px 24px;box-shadow:0 12px 40px rgba(0,0,0,.35);flex-shrink:0;}
+        .panel-title{text-align:center;font-size:18px;font-weight:700;color:var(--red-deep);margin-bottom:18px;}
+        .sec-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:16px 0 8px;border-bottom:1px solid #e8dfc8;padding-bottom:4px;}
+        .field{margin-bottom:10px;}
+        .field label{display:block;font-size:13px;color:#555;margin-bottom:4px;font-weight:600;}
+        .field input,.field select,.field textarea{width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;font-family:'Noto Serif Devanagari',serif;background:#fff;color:var(--ink);transition:border-color .2s;outline:none;}
+        .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--red);}
+        .font-row{display:flex;gap:8px;align-items:center;}
+        .font-row label{font-size:13px;color:#555;font-weight:600;white-space:nowrap;}
+        .font-row input[type=range]{flex:1;accent-color:var(--red);}
+        .fval{font-size:13px;font-weight:700;color:var(--red);min-width:34px;text-align:right;}
+        .swatch-row{display:flex;gap:8px;flex-wrap:wrap;}
+        .swatch{width:28px;height:28px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:transform .15s,border-color .15s;}
+        .swatch:hover{transform:scale(1.15);}
+        .swatch.active{border-color:#333;transform:scale(1.1);}
+        .file-btn{display:block;width:100%;padding:9px;border:1.5px dashed var(--gold);border-radius:8px;text-align:center;font-size:13px;color:var(--muted);cursor:pointer;transition:background .2s;}
+        .file-btn:hover{background:var(--gold-pale);}
+        .file-input{display:none;}
+        .dl-btn{width:100%;margin-top:18px;padding:14px;background:linear-gradient(135deg,var(--red-deep),var(--red));color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;font-family:'Noto Serif Devanagari',serif;transition:opacity .2s,transform .1s;}
+        .dl-btn:active{transform:scale(.98);}
+        .dl-btn:disabled{opacity:.6;cursor:not-allowed;}
+        .rec-btn{width:100%;margin-top:10px;padding:12px;background:#fff;color:var(--red-deep);border:2px solid var(--red);border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Serif Devanagari',serif;}
+        .rec-btn:hover{background:#fff5f5;}
+
+        /* Auth status bar */
+        .auth-bar{display:flex;align-items:center;justify-content:space-between;background:#f8f4ee;border-radius:8px;padding:8px 12px;margin-bottom:4px;font-size:12px;color:var(--muted);}
+        .auth-bar .auth-user{font-weight:700;color:var(--red-deep);}
+        .auth-bar button{background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;text-decoration:underline;}
+
+        /* ── POSTER WRAP ── */
+        .poster-wrap{width:100%;max-width:430px;flex-shrink:0;position:relative;}
+        .poster{width:800px;height:1422px;transform-origin:top left;position:relative;overflow:hidden;background:var(--cream);border:14px solid var(--gold);outline:4px solid var(--red-deep);outline-offset:-18px;}
+
+        /* Live canvas — always hidden in UI, only static SVG is used */
+        #posterFW{display:none;}
+        /* Static decorative fireworks SVG — invisible in UI, shown only during download render */
+        #staticFW{position:absolute;top:0;left:0;width:800px;height:680px;pointer-events:none;z-index:19;display:none;}
+
+        /* ── HEADER ── */
+        .p-header{position:relative;height:235px;background:linear-gradient(180deg,var(--red-deep) 0%,var(--red) 100%);display:flex;align-items:center;justify-content:center;border-bottom:6px solid var(--gold);}
+        .p-header::before{content:'';position:absolute;top:10px;left:50%;transform:translateX(-50%);width:340px;height:210px;border:2px solid rgba(255,215,80,.25);border-radius:50% 50% 0 0/60% 60% 0 0;}
+        .corner-img{position:absolute;width:88px;height:88px;border-radius:50%;border:4px solid var(--gold-light);object-fit:cover;background:#7a1010;}
+        .c-tl{top:14px;left:18px;}.c-bl{bottom:14px;left:18px;}
+        .c-tr{top:14px;right:18px;}.c-br{bottom:14px;right:18px;}
+        .header-center{text-align:center;z-index:2;}
+        .h-ganesh{font-size:18px;color:#ffe99e;font-weight:600;letter-spacing:1px;}
+        .h-samiti{font-size:40px;font-weight:900;color:#fff;line-height:1.15;text-shadow:0 2px 8px rgba(0,0,0,.5);}
+        .h-sub{font-size:28px;font-weight:700;color:var(--gold-light);}
+        .scallop-strip{position:absolute;top:235px;left:0;width:100%;height:22px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='22'%3E%3Cpath d='M0,0 Q15,22 30,0 L30,22 L0,22 Z' fill='%23c9a227'/%3E%3C/svg%3E") repeat-x;z-index:5;}
+        .sparkle{position:absolute;width:26px;height:26px;pointer-events:none;animation:spin 4s linear infinite;opacity:.8;z-index:6;}
+        .sp-tl{top:248px;left:32px;}.sp-tr{top:248px;right:32px;}
+        @keyframes spin{to{transform:rotate(360deg);}}
+
+        /* ── BODY ── */
+        .p-body{position:absolute;top:278px;width:100%;padding:0 55px;text-align:center;}
+        .p-date{font-size:19px;font-weight:700;color:var(--red-deep);margin-bottom:14px;letter-spacing:.5px;}
+        .p-amount{display:inline-block;font-size:32px;font-weight:900;color:var(--red-deep);background:var(--gold-pale);border:2.5px solid var(--gold);padding:10px 44px;border-radius:14px;margin-bottom:16px;}
+        .p-divider{display:flex;align-items:center;gap:10px;margin-bottom:13px;}
+        .p-divider span{flex:1;height:1.5px;background:var(--gold);}
+        .p-divider em{font-size:18px;color:var(--gold);font-style:normal;}
+        .p-message{line-height:1.85;color:#1a1008;margin-bottom:12px;}
+        .p-photo-wrap{display:flex;justify-content:center;}
+        .p-photo{width:390px;height:415px;border:8px solid var(--gold);border-radius:16px;overflow:hidden;position:relative;background:#e8ddc5;}
+        .p-photo img{width:100%;height:100%;object-fit:cover;display:block;}
+        .photo-ph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#b0a090;font-size:15px;gap:8px;}
+        .p-footer-gifts{position:absolute;bottom:36px;right:18px;width:270px;z-index:5;}
+        .p-footer-tag{position:absolute;bottom:14px;left:0;width:100%;text-align:center;font-size:13px;color:var(--muted);font-weight:600;}
+        .ornament{position:absolute;width:52px;height:52px;opacity:.55;pointer-events:none;}
+        .orn-tl{top:18px;left:18px;}.orn-tr{top:18px;right:18px;transform:scaleX(-1);}
+        .orn-bl{bottom:18px;left:18px;transform:scaleY(-1);}.orn-br{bottom:18px;right:18px;transform:scale(-1);}
+
+        /* ── MODALS shared ── */
+        .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:8000;align-items:center;justify-content:center;}
+        .modal-bg.open{display:flex;}
+        .modal{background:#fffdf7;border-radius:16px;padding:32px 28px;width:360px;max-width:95vw;border-top:6px solid var(--red);box-shadow:0 20px 60px rgba(0,0,0,.4);}
+        .modal h2{font-size:20px;color:var(--red-deep);margin-bottom:20px;text-align:center;}
+        .modal .field{margin-bottom:14px;}
+        .modal-err{color:#c0392b;font-size:13px;text-align:center;margin-top:6px;min-height:18px;}
+        .modal-btns{display:flex;gap:10px;margin-top:18px;}
+        .modal-btns button{flex:1;padding:11px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Serif Devanagari',serif;}
+        .btn-primary{background:var(--red);color:#fff;border:none;}
+        .btn-cancel{background:#fff;color:var(--muted);border:1.5px solid #ccc;}
+        .modal-link{text-align:center;font-size:13px;color:var(--muted);margin-top:12px;cursor:pointer;}
+        .modal-link span{color:var(--red);text-decoration:underline;}
+
+        /* ── RECORDS ── */
+        .records-panel{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:7000;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
+        .records-panel.open{display:flex;}
+        .records-box{background:#fffdf7;border-radius:16px;width:100%;max-width:820px;border-top:6px solid var(--red);padding:24px 20px;box-shadow:0 20px 60px rgba(0,0,0,.4);margin:auto;}
+        .rec-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+        .rec-header h2{font-size:20px;color:var(--red-deep);}
+        .rec-close{background:none;border:none;font-size:22px;cursor:pointer;color:#888;}
+        .rec-meta{font-size:12px;color:var(--muted);margin-bottom:14px;}
+        .rec-toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+        .rec-toolbar input{flex:1;min-width:160px;padding:8px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;outline:none;}
+        .rec-toolbar button{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Noto Serif Devanagari',serif;}
+        .btn-add-rec{background:var(--red);color:#fff;border:none;}
+        .btn-export{background:#fff;color:var(--red);border:1.5px solid var(--red);}
+        .rec-table-wrap{overflow-x:auto;}
+        table.rec-table{width:100%;border-collapse:collapse;font-size:14px;}
+        table.rec-table th{background:var(--red);color:#fff;padding:10px 12px;text-align:left;font-weight:600;}
+        table.rec-table td{padding:9px 12px;border-bottom:1px solid #f0e8d8;vertical-align:middle;}
+        table.rec-table tr:hover td{background:var(--gold-pale);}
+        .badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700;}
+        .badge-blue{background:#e3f2fd;color:#1565c0;}
+        .rec-total{text-align:right;font-size:16px;font-weight:700;color:var(--red-deep);margin-top:14px;padding-top:10px;border-top:2px solid var(--gold);}
+        .rec-empty{text-align:center;padding:40px;color:var(--muted);font-size:15px;}
+        .rec-loading{text-align:center;padding:30px;color:var(--muted);}
+
+        /* Add record modal */
+        .add-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;align-items:center;justify-content:center;}
+        .add-modal-bg.open{display:flex;}
+        .add-modal{background:#fffdf7;border-radius:14px;padding:26px 22px;width:360px;max-width:95vw;border-top:5px solid var(--red);box-shadow:0 16px 50px rgba(0,0,0,.4);}
+        .add-modal h3{font-size:17px;color:var(--red-deep);margin-bottom:16px;}
+        .add-modal-btns{display:flex;gap:10px;margin-top:14px;}
+        .add-modal-btns button{flex:1;padding:10px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Serif Devanagari',serif;}
+
+        /* Toast */
+        #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#1a1008;color:#fff;padding:12px 24px;border-radius:50px;font-size:14px;font-weight:600;transition:transform .35s cubic-bezier(.22,1,.36,1),opacity .35s;opacity:0;z-index:9999;pointer-events:none;}
+        #toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+    </style>
+</head>
+<body>
+
+<!-- ── SETUP BANNER ── -->
+<div id="setupBanner">
+    <button class="dismiss" onclick="document.getElementById('setupBanner').style.display='none'">Hide</button>
+    <strong>🔧 Firebase Setup Required — One-time only</strong><br>
+    1. Go to <code>console.firebase.google.com</code> → Create project → Enable <strong>Realtime Database</strong> + <strong>Authentication (Email/Password)</strong><br>
+    2. In Authentication → Add users for each committee member. For admin: add a user, then in Realtime Database create path <code>/admins/&lt;uid&gt;: true</code><br>
+    3. Paste your Firebase config below and click Save. The banner disappears forever.
+</div>
+
+<!-- ── CONFIG PANEL ── -->
+<div id="configPanel">
+    <h3>🔑 Firebase Config (paste from Firebase Console → Project Settings → Your Apps)</h3>
+    <div class="cfg-grid">
+        <input id="cfgApiKey"       placeholder="apiKey"            value="">
+        <input id="cfgAuthDomain"   placeholder="authDomain"        value="">
+        <input id="cfgDbUrl"        placeholder="databaseURL"       value="">
+        <input id="cfgProjectId"    placeholder="projectId"         value="">
+        <input id="cfgAppId"        placeholder="appId"             value="">
+    </div>
+    <button class="cfg-save" onclick="saveConfig()">💾 Save & Connect Firebase</button>
+    <p class="cfg-note">Config is saved in your browser only. Never share this page's localStorage with others. For production, host on Firebase Hosting where the config is already embedded.</p>
+</div>
+
+<div class="app">
+
+    <!-- ── CONTROL PANEL ── -->
+    <div class="panel">
+        <div class="panel-title">🪷 पोस्टर बनाएं</div>
+
+        <!-- Auth status -->
+        <div class="auth-bar" id="authBar">
+            <span id="authStatus">लॉगिन नहीं हुआ</span>
+            <button onclick="openLogin()">लॉगिन</button>
+        </div>
+
+        <div class="sec-label">अवसर (Event)</div>
+        <div class="field">
+            <label>अवसर चुनें</label>
+            <select id="eventType" onchange="changeTemplate(this.value)">
+                <option value="self">स्वयं का जन्मदिन</option>
+                <option value="son">पुत्र का जन्मदिन</option>
+                <option value="daughter">पुत्री का जन्मदिन</option>
+                <option value="wife">पत्नी का जन्मदिन</option>
+                <option value="anniversary">वैवाहिक वर्षगांठ</option>
+                <option value="custom">अन्य (Custom)</option>
+            </select>
+        </div>
+
+        <div class="sec-label">नाम (Names)</div>
+        <div class="field">
+            <label id="lbl1">मुख्य नाम</label>
+            <input id="name1" placeholder="यहाँ नाम लिखें" oninput="refreshMessage()">
+        </div>
+        <div class="field" id="name2field" style="display:none">
+            <label id="lbl2">दूसरा नाम</label>
+            <input id="name2" placeholder="यहाँ नाम लिखें" oninput="refreshMessage()">
+        </div>
+        <div class="field" id="msgfield" style="display:none">
+            <label>संदेश टाइप करें</label>
+            <textarea id="customMsg" rows="4" oninput="document.getElementById('pMsg').innerText=this.value"></textarea>
+        </div>
+
+        <div class="sec-label">विवरण</div>
+        <div class="field">
+            <label>समर्पण राशि (₹)</label>
+            <input type="number" id="amount" value="501" oninput="refreshAmount()">
+        </div>
+        <div class="field">
+            <label>दिनांक</label>
+            <input type="date" id="dateInput" onchange="refreshDate()">
+        </div>
+
+        <div class="sec-label">संदेश का आकार</div>
+        <div class="font-row">
+            <label>आकार</label>
+            <input type="range" min="18" max="32" value="22" id="fontSize" oninput="applyFont()">
+            <span class="fval" id="fsVal">22px</span>
+        </div>
+
+        <div class="sec-label">संदेश का रंग</div>
+        <div class="swatch-row">
+            <div class="swatch active" style="background:#1a1008" data-color="#1a1008" onclick="pickColor(this)"></div>
+            <div class="swatch" style="background:#9b1515" data-color="#9b1515" onclick="pickColor(this)"></div>
+            <div class="swatch" style="background:#0a4a8a" data-color="#0a4a8a" onclick="pickColor(this)"></div>
+            <div class="swatch" style="background:#1a5c2e" data-color="#1a5c2e" onclick="pickColor(this)"></div>
+            <div class="swatch" style="background:#5a3a00" data-color="#5a3a00" onclick="pickColor(this)"></div>
+            <div class="swatch" style="background:#4a0a4a" data-color="#4a0a4a" onclick="pickColor(this)"></div>
+        </div>
+
+        <div class="sec-label">फोटो</div>
+        <label class="file-btn" for="photoInput">📷 फोटो अपलोड करें</label>
+        <input type="file" id="photoInput" class="file-input" accept="image/*" onchange="loadPhoto(event)">
+
+        <button class="dl-btn" id="dlBtn" onclick="downloadPoster()">⬇ स्टेटस डाउनलोड करें</button>
+        <button class="rec-btn" onclick="requireLoginThen(openRecords)">📋 दान रिकॉर्ड देखें</button>
+    </div>
+
+    <!-- ── POSTER ── -->
+    <div class="poster-wrap" id="posterWrap">
+        <div class="poster" id="poster">
+
+            <!-- Static SVG fireworks — display:none in UI, shown only during download render -->
+            <svg id="staticFW" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg"></svg>
+
+            <!-- Ornaments -->
+            <svg class="ornament orn-tl" viewBox="0 0 52 52" fill="none"><path d="M2 2 Q26 2 26 26 Q26 2 50 2" stroke="#c9a227" stroke-width="2"/><path d="M2 2 L2 50" stroke="#c9a227" stroke-width="2"/><circle cx="2" cy="2" r="4" fill="#c9a227"/><circle cx="26" cy="2" r="3" fill="#c9a227"/><circle cx="2" cy="26" r="3" fill="#c9a227"/><path d="M8 8 L20 8 L8 20 Z" fill="#c9a227" opacity=".6"/></svg>
+            <svg class="ornament orn-tr" viewBox="0 0 52 52" fill="none"><path d="M2 2 Q26 2 26 26 Q26 2 50 2" stroke="#c9a227" stroke-width="2"/><path d="M2 2 L2 50" stroke="#c9a227" stroke-width="2"/><circle cx="2" cy="2" r="4" fill="#c9a227"/><circle cx="26" cy="2" r="3" fill="#c9a227"/><circle cx="2" cy="26" r="3" fill="#c9a227"/><path d="M8 8 L20 8 L8 20 Z" fill="#c9a227" opacity=".6"/></svg>
+            <svg class="ornament orn-bl" viewBox="0 0 52 52" fill="none"><path d="M2 2 Q26 2 26 26 Q26 2 50 2" stroke="#c9a227" stroke-width="2"/><path d="M2 2 L2 50" stroke="#c9a227" stroke-width="2"/><circle cx="2" cy="2" r="4" fill="#c9a227"/><circle cx="26" cy="2" r="3" fill="#c9a227"/><circle cx="2" cy="26" r="3" fill="#c9a227"/><path d="M8 8 L20 8 L8 20 Z" fill="#c9a227" opacity=".6"/></svg>
+            <svg class="ornament orn-br" viewBox="0 0 52 52" fill="none"><path d="M2 2 Q26 2 26 26 Q26 2 50 2" stroke="#c9a227" stroke-width="2"/><path d="M2 2 L2 50" stroke="#c9a227" stroke-width="2"/><circle cx="2" cy="2" r="4" fill="#c9a227"/><circle cx="26" cy="2" r="3" fill="#c9a227"/><circle cx="2" cy="26" r="3" fill="#c9a227"/><path d="M8 8 L20 8 L8 20 Z" fill="#c9a227" opacity=".6"/></svg>
+
+            <!-- Header -->
+            <div class="p-header">
+                <img src="header1.png" class="corner-img c-tl" onerror="this.style.background='#8a1212'">
+                <img src="header3.png" class="corner-img c-bl" onerror="this.style.background='#8a1212'">
+                <div class="header-center">
+                    <div class="h-ganesh">॥ श्री गणेशाय नमः ॥</div>
+                    <div class="h-samiti">पाटेश्वर युवा सेवा समिति</div>
+                    <div class="h-sub">ठि. पटली</div>
+                </div>
+                <img src="header2.png" class="corner-img c-tr" onerror="this.style.background='#8a1212'">
+                <img src="header4.png" class="corner-img c-br" onerror="this.style.background='#8a1212'">
+            </div>
+            <div class="scallop-strip"></div>
+            <svg class="sparkle sp-tl" viewBox="0 0 24 24"><path d="M12 2L13.5 10L22 12L13.5 14L12 22L10.5 14L2 12L10.5 10Z" fill="#f0d080"/></svg>
+            <svg class="sparkle sp-tr" viewBox="0 0 24 24" style="animation-direction:reverse"><path d="M12 2L13.5 10L22 12L13.5 14L12 22L10.5 14L2 12L10.5 10Z" fill="#f0d080"/></svg>
+
+            <!-- Body -->
+            <div class="p-body">
+                <div class="p-date">दिनांक: <span id="pDate"></span></div>
+                <div class="p-amount">समर्पण राशि: ₹ <span id="pAmount">501</span></div>
+                <div class="p-divider"><span></span><em>✦</em><span></span></div>
+                <div class="p-message" id="pMsg" style="font-size:22px;"></div>
+                <div class="p-divider" style="margin-top:12px"><span></span><em>✦</em><span></span></div>
+                <div class="p-photo-wrap">
+                    <div class="p-photo">
+                        <img id="pPhoto" src="" style="display:none">
+                        <div class="photo-ph" id="photoPh">
+                            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#c0aa88" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                            <span>फोटो यहाँ दिखेगी</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <img src="footer-gifts.png" class="p-footer-gifts" onerror="this.style.display='none'">
+            <div class="p-footer-tag">© 2026, Design by NsRao &nbsp;|&nbsp; पाटेश्वर युवा सेवा समिति</div>
+        </div>
+    </div>
+</div>
+
+<!-- ── LOGIN MODAL ── -->
+<div class="modal-bg" id="loginModal">
+    <div class="modal">
+        <h2>🔐 लॉगिन करें</h2>
+        <div class="field"><label>Email</label><input type="email" id="loginEmail" placeholder="your@email.com" onkeydown="if(event.key==='Enter')doLogin()"></div>
+        <div class="field"><label>पासवर्ड</label><input type="password" id="loginPass" placeholder="••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+        <div class="modal-err" id="loginErr"></div>
+        <div class="modal-btns">
+            <button class="btn-cancel" onclick="closeLogin()">रद्द करें</button>
+            <button class="btn-primary" id="loginBtn" onclick="doLogin()">लॉगिन</button>
+        </div>
+        <div class="modal-link">पासवर्ड भूल गए? <span onclick="doResetPassword()">Reset करें</span></div>
+    </div>
+</div>
+
+<!-- ── RECORDS PANEL ── -->
+<div class="records-panel" id="recordsPanel">
+    <div class="records-box">
+        <div class="rec-header">
+            <h2>📋 दान रिकॉर्ड</h2>
+            <button class="rec-close" onclick="closeRecords()">✕</button>
+        </div>
+        <div class="rec-meta" id="recMeta"></div>
+        <div class="rec-toolbar">
+            <input type="text" id="recSearch" placeholder="नाम / अवसर खोजें…" oninput="renderTable()">
+            <button class="btn-add-rec" onclick="openAddRecord()">+ नया जोड़ें</button>
+            <button class="btn-export" onclick="exportCSV()">⬇ Excel CSV</button>
+        </div>
+        <div class="rec-table-wrap">
+            <div class="rec-loading" id="recLoading">डेटा लोड हो रहा है…</div>
+            <table class="rec-table" id="recTable" style="display:none">
+                <thead><tr><th>#</th><th>दिनांक</th><th>नाम</th><th>अवसर</th><th>राशि (₹)</th><th>जोड़ा</th><th>क्रिया</th></tr></thead>
+                <tbody id="recBody"></tbody>
+            </table>
+            <div class="rec-empty" id="recEmpty" style="display:none">कोई रिकॉर्ड नहीं मिला</div>
+        </div>
+        <div class="rec-total" id="recTotal"></div>
+    </div>
+</div>
+
+<!-- ── ADD RECORD MODAL ── -->
+<div class="add-modal-bg" id="addModal">
+    <div class="add-modal">
+        <h3>नया दान रिकॉर्ड जोड़ें</h3>
+        <div class="field"><label>दिनांक</label><input type="date" id="arDate"></div>
+        <div class="field"><label>दानदाता का नाम</label><input type="text" id="arName" placeholder="पूरा नाम लिखें"></div>
+        <div class="field"><label>अवसर</label>
+            <select id="arEvent">
+                <option>स्वयं का जन्मदिन</option><option>पुत्र का जन्मदिन</option>
+                <option>पुत्री का जन्मदिन</option><option>पत्नी का जन्मदिन</option>
+                <option>वैवाहिक वर्षगांठ</option><option>अन्य</option>
+            </select>
+        </div>
+        <div class="field"><label>राशि (₹)</label><input type="number" id="arAmt" value="501"></div>
+        <div class="add-modal-btns">
+            <button style="background:#fff;color:var(--muted);border:1.5px solid #ccc" onclick="closeAddRecord()">रद्द</button>
+            <button style="background:var(--red);color:#fff;border:none" id="saveRecBtn" onclick="saveRecord()">सहेजें</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════════
+   FIREBASE CONFIG + INIT
+══════════════════════════════════════════════ */
+let db = null, auth = null, currentUser = null, isAdmin = false, firebaseReady = false;
+let allRecords = []; // live synced from Firebase
+
+function loadSavedConfig() {
+    try {
+        const c = JSON.parse(localStorage.getItem('fbConfig') || 'null');
+        if (c && c.apiKey) {
+            document.getElementById('cfgApiKey').value     = c.apiKey;
+            document.getElementById('cfgAuthDomain').value = c.authDomain;
+            document.getElementById('cfgDbUrl').value      = c.databaseURL;
+            document.getElementById('cfgProjectId').value  = c.projectId;
+            document.getElementById('cfgAppId').value      = c.appId;
+            initFirebase(c);
+        }
+    } catch(e) {}
+}
+
+function saveConfig() {
+    const cfg = {
+        apiKey:       document.getElementById('cfgApiKey').value.trim(),
+        authDomain:   document.getElementById('cfgAuthDomain').value.trim(),
+        databaseURL:  document.getElementById('cfgDbUrl').value.trim(),
+        projectId:    document.getElementById('cfgProjectId').value.trim(),
+        appId:        document.getElementById('cfgAppId').value.trim(),
+    };
+    if (!cfg.apiKey || !cfg.databaseURL) { showToast('apiKey और databaseURL जरूरी हैं'); return; }
+    localStorage.setItem('fbConfig', JSON.stringify(cfg));
+    initFirebase(cfg);
+    showToast('Firebase जुड़ गया ✓');
+    document.getElementById('setupBanner').style.display = 'none';
+    document.getElementById('configPanel').style.display = 'none';
+}
+
+function initFirebase(cfg) {
+    try {
+        if (!firebase.apps.length) firebase.initializeApp(cfg);
+        db   = firebase.database();
+        auth = firebase.auth();
+        firebaseReady = true;
+        document.getElementById('configPanel').style.display = 'none';
+        document.getElementById('setupBanner').style.display = 'none';
+        listenAuth();
+    } catch(e) {
+        showToast('Firebase error: ' + e.message);
+    }
+}
+
+function listenAuth() {
+    auth.onAuthStateChanged(async user => {
+        currentUser = user;
+        if (user) {
+            // Check admin
+            const snap = await db.ref('admins/' + user.uid).get();
+            isAdmin = snap.exists() && snap.val() === true;
+            document.getElementById('authStatus').innerHTML =
+                `<span class="auth-user">${user.email}</span>${isAdmin ? ' 👑 Admin' : ' 👤 Member'}`;
+            document.querySelector('#authBar button').innerText = 'लॉगआउट';
+            document.querySelector('#authBar button').onclick = doLogout;
+        } else {
+            isAdmin = false;
+            document.getElementById('authStatus').innerText = 'लॉगिन नहीं हुआ';
+            document.querySelector('#authBar button').innerText = 'लॉगिन';
+            document.querySelector('#authBar button').onclick = openLogin;
+        }
+    });
+}
+
+
+/* ══════════════════════════════════════════════
+   STATIC DECORATIVE FIREWORKS — baked into PNG only
+   SVG is display:none in UI, shown for 120ms
+   during html2canvas capture then hidden again.
+   Bursts spread across full 800×1422 poster.
+══════════════════════════════════════════════ */
+function buildStaticFireworks() {
+    const svg = document.getElementById('staticFW');
+    // Reset height to cover full poster
+    svg.setAttribute('viewBox','0 0 800 1422');
+    svg.style.height = '1422px';
+
+    const BURSTS = [
+        // Top zone — above header
+        {cx:100, cy:70,  color:'#ff6b6b', rays:18, r1:9,  r2:58},
+        {cx:400, cy:45,  color:'#ffd700', rays:24, r1:11, r2:75},
+        {cx:700, cy:75,  color:'#74c0fc', rays:16, r1:8,  r2:52},
+        // Mid-upper zone — over header
+        {cx:210, cy:165, color:'#6bcb77', rays:14, r1:7,  r2:44},
+        {cx:590, cy:155, color:'#ff922b', rays:20, r1:9,  r2:62},
+        {cx:55,  cy:195, color:'#f06595', rays:12, r1:6,  r2:38},
+        {cx:745, cy:210, color:'#b9fbc0', rays:14, r1:6,  r2:40},
+        // Mid zone — around message area
+        {cx:320, cy:440, color:'#ffd93d', rays:16, r1:7,  r2:46},
+        {cx:640, cy:380, color:'#ff6b6b', rays:18, r1:8,  r2:54},
+        {cx:90,  cy:420, color:'#74c0fc', rays:14, r1:6,  r2:42},
+        // Lower zone — around photo area
+        {cx:150, cy:800, color:'#ffd700', rays:16, r1:7,  r2:48},
+        {cx:680, cy:760, color:'#f06595', rays:14, r1:6,  r2:42},
+        // Bottom zone — footer area
+        {cx:120, cy:1280,color:'#6bcb77', rays:14, r1:6,  r2:40},
+        {cx:400, cy:1320,color:'#ff922b', rays:18, r1:8,  r2:55},
+        {cx:680, cy:1260,color:'#ffd93d', rays:16, r1:7,  r2:46},
+    ];
+
+    let svgContent = '';
+    BURSTS.forEach(b => {
+        for(let i=0;i<b.rays;i++){
+            const angle=(Math.PI*2/b.rays)*i+(Math.random()-.5)*.35;
+            const len=b.r2*(0.5+Math.random()*.5);
+            const ex=b.cx+Math.cos(angle)*len, ey=b.cy+Math.sin(angle)*len;
+            svgContent+=`<line x1="${b.cx}" y1="${b.cy}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" stroke="${b.color}" stroke-width="${(1.2+Math.random()*1.8).toFixed(1)}" stroke-linecap="round" opacity="${(.45+Math.random()*.55).toFixed(2)}"/>`;
+            svgContent+=`<circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="${(1.5+Math.random()*2.5).toFixed(1)}" fill="${b.color}" opacity="${(.6+Math.random()*.4).toFixed(2)}"/>`;
+        }
+        // Centre glow — two rings
+        svgContent+=`<circle cx="${b.cx}" cy="${b.cy}" r="${(b.r1*.55).toFixed(1)}" fill="${b.color}" opacity=".95"/>`;
+        svgContent+=`<circle cx="${b.cx}" cy="${b.cy}" r="${b.r1}" fill="${b.color}" opacity=".25"/>`;
+        svgContent+=`<circle cx="${b.cx}" cy="${b.cy}" r="${(b.r1*1.6).toFixed(1)}" fill="${b.color}" opacity=".1"/>`;
+        // Scatter glitter
+        for(let g=0;g<8;g++){
+            const ga=Math.random()*Math.PI*2, gr=b.r2*(1.05+Math.random()*.6);
+            svgContent+=`<circle cx="${(b.cx+Math.cos(ga)*gr).toFixed(1)}" cy="${(b.cy+Math.sin(ga)*gr).toFixed(1)}" r="${(1+Math.random()*1.8).toFixed(1)}" fill="${b.color}" opacity="${(.35+Math.random()*.55).toFixed(2)}"/>`;
+        }
+    });
+    // Gold star dust sprinkled across whole poster
+    for(let s=0;s<80;s++){
+        const sx=Math.random()*780+10, sy=Math.random()*1400+10;
+        svgContent+=`<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="${(.6+Math.random()*1.6).toFixed(1)}" fill="#ffd700" opacity="${(.25+Math.random()*.55).toFixed(2)}"/>`;
+    }
+    // Shooting star trails — diagonal streaks for extra drama
+    const STREAKS = [
+        {x1:50,y1:30,x2:180,y2:90,color:'#ffd700'},
+        {x1:620,y1:20,x2:750,y2:80,color:'#ff6b6b'},
+        {x1:300,y1:1350,x2:430,y2:1410,color:'#74c0fc'},
+        {x1:600,y1:1300,x2:720,y2:1370,color:'#6bcb77'},
+    ];
+    STREAKS.forEach(s=>{
+        svgContent+=`<line x1="${s.x1}" y1="${s.y1}" x2="${s.x2}" y2="${s.y2}" stroke="${s.color}" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>`;
+        svgContent+=`<circle cx="${s.x2}" cy="${s.y2}" r="2.5" fill="${s.color}" opacity=".8"/>`;
+    });
+    svg.innerHTML = svgContent;
+}
+
+/* ══════════════════════════════════════════════
+   SCALING
+══════════════════════════════════════════════ */
+function scalePoster(){
+    const wrap=document.getElementById('posterWrap'),poster=document.getElementById('poster');
+    const w=wrap.clientWidth;
+    if(w>0&&w<800){poster.style.transform=`scale(${w/800})`;wrap.style.height=(1422*(w/800))+'px';}
+    else{poster.style.transform='none';wrap.style.height='auto';}
+}
+window.addEventListener('resize',scalePoster);
+
+window.onload=()=>{
+    scalePoster();
+    const today=new Date().toISOString().split('T')[0];
+    document.getElementById('dateInput').value=today;
+    document.getElementById('arDate').value=today;
+    refreshDate(); changeTemplate('self');
+    loadSavedConfig();
+};
+
+/* ══════════════════════════════════════════════
+   POSTER CONTROLS
+══════════════════════════════════════════════ */
+function refreshDate(){
+    const v=document.getElementById('dateInput').value; if(!v)return;
+    const[y,m,d]=v.split('-');
+    document.getElementById('pDate').innerText=`${d}-${m}-${y}`;
+}
+function refreshAmount(){
+    document.getElementById('pAmount').innerText=document.getElementById('amount').value||'0';
+    refreshMessage();
+}
+
+let tpl='self';
+function changeTemplate(t){
+    tpl=t;
+    const n2=document.getElementById('name2field'),mf=document.getElementById('msgfield');
+    const l1=document.getElementById('lbl1'),l2=document.getElementById('lbl2');
+    n2.style.display=(t==='son'||t==='daughter'||t==='wife'||t==='anniversary')?'block':'none';
+    mf.style.display=(t==='custom')?'block':'none';
+    if(t==='self')          l1.innerText='व्यक्ति का नाम';
+    else if(t==='son')     {l1.innerText='पिता/माता का नाम';l2.innerText='पुत्र का नाम';}
+    else if(t==='daughter'){l1.innerText='पिता/माता का नाम';l2.innerText='पुत्री का नाम';}
+    else if(t==='wife')    {l1.innerText='पति का नाम';l2.innerText='पत्नी का नाम';}
+    else if(t==='anniversary'){l1.innerText='पति का नाम';l2.innerText='पत्नी का नाम';}
+    else l1.innerText='नाम';
+    refreshMessage();
+}
+
+function refreshMessage(){
+    const n1=document.getElementById('name1').value||'[नाम 1]';
+    const n2=document.getElementById('name2').value||'[नाम 2]';
+    const amt=document.getElementById('pAmount').innerText;
+    const org='पाटेश्वर युवा सेवा समिति, ठि. पटली';
+    const tail=`${org} को ₹${amt} का आर्थिक सहयोग प्रदान किया।`;
+    let msg='';
+    if(tpl==='self')       msg=`श्री ${n1} ने अपने जन्मदिन के शुभ अवसर पर ${tail}\nइस अवसर पर श्री ${n1} को जन्मदिन की हार्दिक बधाई एवं शुभकामनाएं।`;
+    else if(tpl==='son')   msg=`श्री ${n1} ने अपने सुपुत्र ${n2} के जन्मदिन के शुभ अवसर पर ${tail}\nइस अवसर पर ${n2} को जन्मदिन की हार्दिक बधाई एवं शुभकामनाएं।`;
+    else if(tpl==='daughter') msg=`श्री ${n1} ने अपनी सुपुत्री ${n2} के जन्मदिन के शुभ अवसर पर ${tail}\nइस अवसर पर ${n2} को जन्मदिन की हार्दिक बधाई एवं शुभकामनाएं।`;
+    else if(tpl==='wife')  msg=`श्री ${n1} ने अपनी धर्मपत्नी श्रीमती ${n2} के जन्मदिन के शुभ अवसर पर ${tail}\nइस अवसर पर श्रीमती ${n2} को जन्मदिन की हार्दिक बधाई एवं शुभकामनाएं।`;
+    else if(tpl==='anniversary') msg=`श्री ${n1} एवं श्रीमती ${n2} ने अपनी वैवाहिक वर्षगांठ के शुभ अवसर पर ${tail}\nइस अवसर पर दोनों को वैवाहिक वर्षगांठ की हार्दिक बधाई एवं शुभकामनाएं।`;
+    else msg=document.getElementById('customMsg').value;
+    document.getElementById('pMsg').innerText=msg;
+}
+
+function applyFont(){
+    const sz=document.getElementById('fontSize').value;
+    document.getElementById('fsVal').innerText=sz+'px';
+    document.getElementById('pMsg').style.fontSize=sz+'px';
+}
+function pickColor(el){
+    document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('pMsg').style.color=el.dataset.color;
+}
+function loadPhoto(e){
+    const file=e.target.files[0]; if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+        const img=document.getElementById('pPhoto');
+        img.src=ev.target.result; img.style.display='block';
+        document.getElementById('photoPh').style.display='none';
+    };
+    reader.readAsDataURL(file);
+}
+
+/* ══════════════════════════════════════════════
+   DOWNLOAD — pauses live FW, shows static SVG,
+   renders, then restores live FW
+══════════════════════════════════════════════ */
+function downloadPoster(){
+    const btn=document.getElementById('dlBtn');
+    btn.disabled=true; btn.innerText='⏳ तैयार हो रहा है…';
+
+    // Show static fireworks SVG (only visible during html2canvas capture, not in UI)
+    buildStaticFireworks();
+    document.getElementById('staticFW').style.display='block';
+
+    const poster=document.getElementById('poster');
+    const wrap=document.getElementById('posterWrap');
+    const pt=poster.style.transform, ph=wrap.style.height;
+    poster.style.transform='none'; wrap.style.height='auto';
+
+    setTimeout(()=>{
+        html2canvas(poster,{scale:2,useCORS:true,allowTaint:true,backgroundColor:'#fefcf5',logging:false}).then(canvas=>{
+            poster.style.transform=pt; wrap.style.height=ph;
+            document.getElementById('staticFW').style.display='none';
+
+            const isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent);
+            const isSafari=/^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            canvas.toBlob(blob=>{
+                const file=new File([blob],'Pateshwar_Status.png',{type:'image/png'});
+                if((isIOS||isSafari)&&navigator.canShare&&navigator.canShare({files:[file]})){
+                    navigator.share({files:[file],title:'पाटेश्वर युवा सेवा समिति'})
+                        .catch(()=>openImgTab(canvas))
+                        .finally(()=>resetBtn(btn));
+                } else if(isIOS||isSafari){
+                    openImgTab(canvas); resetBtn(btn);
+                } else {
+                    const url=URL.createObjectURL(blob);
+                    const a=document.createElement('a');a.href=url;a.download='Pateshwar_Status.png';
+                    document.body.appendChild(a);a.click();document.body.removeChild(a);
+                    setTimeout(()=>URL.revokeObjectURL(url),500);
+                    showToast('पोस्टर डाउनलोड हो गया! ✓');
+                    resetBtn(btn);
+                }
+            },'image/png');
+        }).catch(err=>{
+            poster.style.transform=pt; wrap.style.height=ph;
+            document.getElementById('staticFW').style.display='none';
+            showToast('Error: '+err.message); resetBtn(btn);
+        });
+    },100);
+}
+
+function openImgTab(canvas){
+    const url=canvas.toDataURL('image/png');
+    const win=window.open('','_blank');
+    if(win){win.document.write(`<html><body style="margin:0;background:#111"><img src="${url}" style="max-width:100%;display:block"><p style="color:#fff;font-family:sans-serif;text-align:center;padding:10px;font-size:14px">फोटो को देर तक दबाएं → "Save to Photos"</p></body></html>`);win.document.close();}
+    else showToast('पॉप-अप ब्लॉक है। Allow करें।');
+}
+function resetBtn(btn){btn.disabled=false;btn.innerText='⬇ स्टेटस डाउनलोड करें';}
+
+/* ══════════════════════════════════════════════
+   AUTH
+══════════════════════════════════════════════ */
+function openLogin(){document.getElementById('loginModal').classList.add('open');}
+function closeLogin(){document.getElementById('loginModal').classList.remove('open');document.getElementById('loginErr').innerText='';}
+
+async function doLogin(){
+    if(!firebaseReady){showToast('पहले Firebase config सेट करें');return;}
+    const btn=document.getElementById('loginBtn');
+    btn.disabled=true; btn.innerText='…';
+    try{
+        await auth.signInWithEmailAndPassword(
+            document.getElementById('loginEmail').value.trim(),
+            document.getElementById('loginPass').value
+        );
+        closeLogin();
+        showToast('लॉगिन सफल ✓');
+    } catch(e){
+        document.getElementById('loginErr').innerText=friendlyAuthError(e.code);
+    }
+    btn.disabled=false; btn.innerText='लॉगिन';
+}
+
+async function doLogout(){
+    await auth.signOut();
+    showToast('लॉगआउट हो गया');
+}
+
+async function doResetPassword(){
+    const email=document.getElementById('loginEmail').value.trim();
+    if(!email){showToast('पहले Email डालें');return;}
+    try{ await auth.sendPasswordResetEmail(email); showToast('Reset email भेजा गया ✓'); }
+    catch(e){ showToast(friendlyAuthError(e.code)); }
+}
+
+function friendlyAuthError(code){
+    const map={'auth/user-not-found':'यूज़र नहीं मिला','auth/wrong-password':'गलत पासवर्ड','auth/invalid-email':'गलत Email','auth/too-many-requests':'बहुत प्रयास हुए, थोड़ी देर रुकें'};
+    return map[code]||'लॉगिन में समस्या: '+code;
+}
+
+function requireLoginThen(fn){
+    if(!firebaseReady){showToast('पहले Firebase config सेट करें');return;}
+    if(!currentUser){openLogin(); pendingAction=fn; return;}
+    fn();
+}
+let pendingAction=null;
+// After login, run pending action
+const origListenAuth=listenAuth;
+
+/* ══════════════════════════════════════════════
+   RECORDS — Firebase Realtime Database
+   Path: /records/{pushId}
+   Each record: {date, name, event, amt, addedBy, addedByEmail, ts}
+══════════════════════════════════════════════ */
+let recordsListener=null;
+
+function openRecords(){
+    if(!currentUser){openLogin();return;}
+    document.getElementById('recordsPanel').classList.add('open');
+    document.getElementById('recLoading').style.display='block';
+    document.getElementById('recTable').style.display='none';
+    document.getElementById('recMeta').innerText='Logged in as: '+currentUser.email+(isAdmin?' (Admin — can delete)':' (Member — view only)');
+    startRecordsListener();
+}
+
+function closeRecords(){
+    document.getElementById('recordsPanel').classList.remove('open');
+    if(recordsListener){ db.ref('records').off('value',recordsListener); recordsListener=null; }
+}
+
+function startRecordsListener(){
+    if(!db)return;
+    if(recordsListener)db.ref('records').off('value',recordsListener);
+    recordsListener = db.ref('records').orderByChild('ts').on('value', snap=>{
+        allRecords=[];
+        snap.forEach(child=>{ allRecords.push({fbKey:child.key, ...child.val()}); });
+        allRecords.reverse(); // newest first
+        document.getElementById('recLoading').style.display='none';
+        document.getElementById('recTable').style.display='table';
+        renderTable();
+    });
+}
+
+function renderTable(){
+    const q=document.getElementById('recSearch').value.toLowerCase();
+    const filtered=allRecords.filter(r=>r.name.toLowerCase().includes(q)||r.event.toLowerCase().includes(q));
+    const body=document.getElementById('recBody');
+    const empty=document.getElementById('recEmpty');
+    if(!filtered.length){body.innerHTML='';empty.style.display='block';document.getElementById('recTotal').innerText='';return;}
+    empty.style.display='none';
+    body.innerHTML=filtered.map((r,i)=>`
+        <tr>
+            <td>${i+1}</td>
+            <td>${fmtDate(r.date)}</td>
+            <td><strong>${r.name}</strong></td>
+            <td><span class="badge badge-blue">${r.event}</span></td>
+            <td><strong>₹${Number(r.amt).toLocaleString('hi-IN')}</strong></td>
+            <td style="font-size:12px;color:#888">${r.addedByEmail||'—'}</td>
+            <td>${isAdmin?`<button onclick="deleteRecord('${r.fbKey}')" style="background:none;border:none;cursor:pointer;color:#c0392b;font-size:15px;padding:2px 6px;">🗑</button>`:'—'}</td>
+        </tr>`).join('');
+    const total=filtered.reduce((s,r)=>s+Number(r.amt),0);
+    document.getElementById('recTotal').innerText=`कुल ${filtered.length} रिकॉर्ड &nbsp;|&nbsp; कुल राशि: ₹${total.toLocaleString('hi-IN')}`;
+}
+
+function fmtDate(d){if(!d)return'';const[y,m,dd]=d.split('-');return`${dd}-${m}-${y}`;}
+
+async function deleteRecord(fbKey){
+    if(!isAdmin){showToast('केवल Admin हटा सकता है');return;}
+    if(!confirm('क्या आप यह रिकॉर्ड हटाना चाहते हैं?'))return;
+    await db.ref('records/'+fbKey).remove();
+    showToast('रिकॉर्ड हटाया गया');
+}
+
+function openAddRecord(){ document.getElementById('addModal').classList.add('open'); }
+function closeAddRecord(){ document.getElementById('addModal').classList.remove('open'); }
+
+async function saveRecord(){
+    const d=document.getElementById('arDate').value;
+    const n=document.getElementById('arName').value.trim();
+    const e=document.getElementById('arEvent').value;
+    const a=parseInt(document.getElementById('arAmt').value)||0;
+    if(!n||!d||!a){showToast('कृपया सभी जानकारी भरें');return;}
+    if(!currentUser){showToast('पहले लॉगिन करें');return;}
+    const btn=document.getElementById('saveRecBtn');
+    btn.disabled=true; btn.innerText='…';
+    try{
+        await db.ref('records').push({
+            date:d, name:n, event:e, amt:a,
+            addedBy:currentUser.uid,
+            addedByEmail:currentUser.email,
+            ts: Date.now()
+        });
+        closeAddRecord(); showToast('रिकॉर्ड सहेजा गया ✓');
+        // Auto-fill poster fields from the saved record
+        document.getElementById('name1').value=n;
+        refreshMessage();
+    } catch(err){ showToast('Error: '+err.message); }
+    btn.disabled=false; btn.innerText='सहेजें';
+}
+
+function exportCSV(){
+    if(!allRecords.length){showToast('कोई रिकॉर्ड नहीं');return;}
+    const rows=allRecords.map(r=>`${fmtDate(r.date)},"${r.name}","${r.event}",${r.amt},"${r.addedByEmail||''}"`).join('\n');
+    const blob=new Blob(['\uFEFF'+'दिनांक,नाम,अवसर,राशि,जोड़ा\n'+rows],{type:'text/csv;charset=utf-8;'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download='Pateshwar_Records.csv';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    showToast('CSV डाउनलोड हुई ✓');
+}
+
+function showToast(msg){
+    const t=document.getElementById('toast');
+    t.innerText=msg;t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'),3000);
+}
+</script>
+</body>
+</html>
